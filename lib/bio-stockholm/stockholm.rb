@@ -31,7 +31,7 @@ module Bio
             state = :first_block
 
           elsif state == :first_block
-            if matches = line.match(/^\#=GS (.+) DE (.+)$/)
+            if matches = line.match(/^\#=GS\s+(.+?)\s+DE\s+(.+)$/)
               to_return.records[matches[1]] = Record.new
               to_return.records[matches[1]].description = matches[2]
             elsif line == "//\n"
@@ -45,7 +45,6 @@ module Bio
               unless splits.length == 2
                 raise FormatException, "Unexpected line in STOCKHOLM format: #{line}"
               end
-p identifier
               to_return.records[identifier].sequence ||= ''
               to_return.records[identifier].sequence += seq
             end
