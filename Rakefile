@@ -17,8 +17,8 @@ Jeweler::Tasks.new do |gem|
   gem.name = "bio-stockholm"
   gem.homepage = "http://github.com/wwood/bioruby-stockholm"
   gem.license = "MIT"
-  gem.summary = %Q{TODO: one-line summary of your gem}
-  gem.description = %Q{TODO: longer description of your gem}
+  gem.summary = %Q{Parse stockholm sequence alignment format}
+  gem.description = %Q{Parses stockholm sequence alignment format}
   gem.email = "donttrustben near gmail.com"
   gem.authors = ["Ben J. Woodcroft"]
   # dependencies defined in Gemfile
