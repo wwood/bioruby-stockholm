@@ -45,9 +45,9 @@ O31699/88-139           EVMLTDIPRLHINDPIMKGFGMVINN..GFVCVENDE
 ```ruby
 require 'bio-stockholm'
 
-entries = Bio::Stockholm::Reader.parse_from_file('spec/data/wikipedia.sto') #=> Array of 1 Bio::Stockholm::Store objects
+entries = Bio::Stockholm::Reader.parse_from_file('spec/data/wikipedia.sto') #=> Array of 1
 
-cbs = records[0]
+cbs = entries[0] #=> Bio::Stockholm::Store object
 
 cbs.gf_features['ID'] #=> 'CBS'
 cbs.gf_features['AC'] #=> 'PF00571'
