@@ -18,6 +18,7 @@ module Bio
         # #=GC RF            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..xxxxxxxxxxx....
         # //
         state = :first
+        returns = []
         to_return = Bio::Stockholm::Store.new
 
         File.open(filename).each_line do |line|
@@ -27,37 +28,82 @@ module Bio
             unless line == "\# STOCKHOLM 1.0\n"
               raise FormatException, "Currently unable to parse stockholm format files unless they are version 1.0"
             end
-            to_return.version = line.strip
+            to_return.header = line.strip
             state = :first_block
 
           elsif state == :first_block
-            if matches = line.match(/^\#=GS\s+(.+?)\s+DE\s+(.+)$/)
-              to_return.records[matches[1]] = Record.new
-              to_return.records[matches[1]].description = matches[2]
-            elsif line == "//\n"
-              return to_return
-            else
-              splits = line.strip.split(/\s+/)
-              next if splits.length > 2 #Currently ignore the annotation lines
+            # Match a GR, GS, etc. "markup" line
+            if matches = line.match(/^\#=(..) (\S+)\s+(.*)/)
+              if matches[1] == 'GF'
+                to_return.gf_features ||= {}
+                if to_return.gf_features.key?(matches[2])
+                  to_return.gf_features[matches[2]] = to_return.gf_features[matches[2]]+' '+matches[3]
+                else
+                  to_return.gf_features[matches[2]] = matches[3]
+                end
+              elsif matches[1] == 'GC'
+                to_return.gc_features ||= {}
+                if to_return.gc_features.key?(matches[2])
+                  to_return.gc_features[matches[2]] = to_return.gc_features[matches[2]]+matches[3]
+                else
+                  to_return.gc_features[matches[2]] = matches[3]
+                end
+              else
+                # GS, GR, or bad parsing
+                unless matches2 = matches[3].match(/(.*?)\s+(.*)/)
+                  raise FormatException, "Unable to parse stockholm GS or GR format line: #{line}"
+                end
+                sequence_identifier = matches[2]
+                to_return.records[sequence_identifier] ||= Record.new
 
-              identifier = splits[0]
-              seq = splits[1]
-              unless splits.length == 2
-                raise FormatException, "Unexpected line in STOCKHOLM format: #{line}"
+                if matches[1] == 'GS'
+                  to_return.records[sequence_identifier].gs_features ||= {}
+
+                  if to_return.records[sequence_identifier].gs_features[matches2[1]]
+                    to_return.records[sequence_identifier].gs_features[matches2[1]] += matches2[2]
+                  else
+                    to_return.records[sequence_identifier].gs_features[matches2[1]] = matches2[2]
+                  end
+                elsif matches[1] == 'GR'
+                  to_return.records[sequence_identifier].gr_features ||= {}
+
+                  if to_return.records[sequence_identifier].gr_features[matches2[1]]
+                    to_return.records[sequence_identifier].gr_features[matches2[1]] += matches2[2]
+                  else
+                    to_return.records[sequence_identifier].gr_features[matches2[1]] = matches2[2]
+                  end
+                else
+                  raise FormatException, "Unable to parse stockholm format line: #{line}"
+                end
               end
-              to_return.records[identifier].sequence ||= ''
-              to_return.records[identifier].sequence += seq
+            elsif line.match(/^\/\//)
+              returns.push to_return
+              to_return = Bio::Stockholm::Store.new
+            else
+              # Else this is just plain old sequence, aligned
+              unless matches = line.match(/^(\S+)\s+(.+)$/)
+                raise FormatException, "Unable to parse stockholm format line: #{line}"
+              end
+              to_return.records[matches[1]] ||= Record.new
+              to_return.records[matches[1]].sequence ||= ''
+              to_return.records[matches[1]].sequence += matches[2].rstrip
             end
           end
         end
-        # If reached here, there was no // most probably
-        raise FormatException, "Unexpected end of stockholm format data"
+
+        return returns
       end
     end
 
     class Store
-      attr_accessor :version
+      # '# STOCKHOLM 1.0'
+      attr_accessor :header
+
+      # Array of Record objects, which in turn store sequence, GR and GS features
       attr_accessor :records
+
+      # GF and GC type features
+      attr_accessor :gc_features, :gf_features
 
       def initialize
         @records = {}
@@ -65,7 +111,8 @@ module Bio
     end
 
     class Record
-      attr_accessor :description
+      # Hash of feature field names to values
+      attr_accessor :gr_features, :gs_features
 
       attr_accessor :sequence
     end
